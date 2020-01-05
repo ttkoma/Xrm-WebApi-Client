@@ -6425,7 +6425,17 @@ process.umask = function() { return 0; };
 
     function FormatError(xhr) {
         if (xhr && xhr.response) {
-            var json = JSON.parse(xhr.response);
+            var json = null;
+
+            try {
+                json = JSON.parse(xhr.response);
+            } catch (e) {
+                // not json document, maybe html response from on-premise IIS
+                json = {
+                    xhrResponseText: xhr.responseText,
+                    xhrStatusCode: xhr.status
+                };
+            }
 
             if (!WebApiClient.PrettifyErrors) {
                 json.xhrStatusText = xhr.statusText;
@@ -6438,7 +6448,7 @@ process.umask = function() { return 0; };
                     error = json.error.message;
                 }
 
-                return xhr.statusText + ": " + error;
+                return xhr.statusText + (error ? ": " + error : "");
             }
         }
 
