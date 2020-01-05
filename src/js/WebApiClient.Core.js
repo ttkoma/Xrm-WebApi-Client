@@ -21,23 +21,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  *
-*/
+ */
 /** @preserve
  * WebApiClient build version v0.0.0
-*/
+ */
 
 /**
  * This is the core functionality of Xrm-WebApi-Client
  * No instantiation needed, it's a singleton.
  * @module WebApiClient
  */
-(function (undefined) {
+(function(undefined) {
     "use strict";
     var WebApiClient = {};
 
     var batchName = "batch_UrlLimitExeedingRequest";
 
-	/**
+    /**
      * @description The API version that will be used when sending requests. Default is "8.0"
      * @param {String}
      * @memberof module:WebApiClient
@@ -79,25 +79,31 @@
      */
     WebApiClient.Token = null;
 
+    /**
+     * @description Flag to use for authenticating in browser when being used in a single page app.
+     * @param {Boolean}
+     * @memberof module:WebApiClient
+     */
+    WebApiClient.WithCredentials = false;
+
     // This is for ensuring that we use bluebird internally, so that calls to WebApiClient have no differing set of
     // functions that can be applied to the Promise. For example Promise.finally would not be available without Bluebird.
     var Promise = require("bluebird").noConflict();
 
     function GetCrmContext() {
-        if (typeof (GetGlobalContext) !== "undefined") {
+        if (typeof(GetGlobalContext) !== "undefined") {
             return GetGlobalContext();
         }
 
-        if (typeof (Xrm) !== "undefined"){
+        if (typeof(Xrm) !== "undefined") {
             return Xrm.Page.context;
         }
     }
 
-    function GetClientUrl () {
+    function GetClientUrl() {
         var context = GetCrmContext();
 
-        if(context)
-        {
+        if (context) {
             return context.getClientUrl();
         }
 
@@ -108,7 +114,7 @@
         throw new Error("Failed to retrieve client url, is ClientGlobalContext.aspx available?");
     }
 
-    function MergeResults (firstResponse, secondResponse) {
+    function MergeResults(firstResponse, secondResponse) {
         if (!firstResponse && !secondResponse) {
             return null;
         }
@@ -129,7 +135,7 @@
         return firstResponse;
     }
 
-    function RemoveIdBrackets (id) {
+    function RemoveIdBrackets(id) {
         if (!id) {
             return id;
         }
@@ -145,15 +151,14 @@
      * @memberof module:WebApiClient
      * @return {String}
      */
-    WebApiClient.GetSetName = function (entityName, overriddenSetName) {
+    WebApiClient.GetSetName = function(entityName, overriddenSetName) {
         if (overriddenSetName) {
             return overriddenSetName;
         }
 
         var ending = entityName.slice(-1);
 
-        switch(ending)
-        {
+        switch (ending) {
             case 's':
                 return entityName + "es";
             case 'y':
@@ -195,12 +200,12 @@
      * @memberof module:WebApiClient
      * @return {void}
      */
-    WebApiClient.AppendToDefaultHeaders = function () {
+    WebApiClient.AppendToDefaultHeaders = function() {
         if (!arguments.length) {
             return;
         }
 
-        for(var i = 0; i < arguments.length; i++) {
+        for (var i = 0; i < arguments.length; i++) {
             var argument = arguments[i];
 
             VerifyHeader(argument);
@@ -221,7 +226,7 @@
         }
     }
 
-    function GetRecordUrl (parameters) {
+    function GetRecordUrl(parameters) {
         var params = parameters || {};
 
         if ((!params.entityName && !params.overriddenSetName) || (!params.entityId && !params.alternateKey)) {
@@ -239,7 +244,7 @@
         return url;
     }
 
-    function FormatError (xhr) {
+    function FormatError(xhr) {
         if (xhr && xhr.response) {
             var json = JSON.parse(xhr.response);
 
@@ -261,7 +266,7 @@
         return "";
     }
 
-    function GetNextLink (response) {
+    function GetNextLink(response) {
         return response["@odata.nextLink"];
     }
 
@@ -269,7 +274,7 @@
         return response["@Microsoft.Dynamics.CRM.fetchxmlpagingcookie"];
     }
 
-    function SetCookie (pagingCookie, parameters) {
+    function SetCookie(pagingCookie, parameters) {
         // Parse cookie that we retrieved with response
         var parser = new DOMParser();
         var cookieXml = parser.parseFromString(pagingCookie, "text/xml");
@@ -300,7 +305,7 @@
         return serializer.serializeToString(fetchXml);
     }
 
-    function SetPreviousResponse (parameters, response) {
+    function SetPreviousResponse(parameters, response) {
         // Set previous response
         parameters._previousResponse = response;
     }
@@ -312,7 +317,7 @@
             return headers;
         }
 
-        for(var i = 0; i < arguments.length; i++) {
+        for (var i = 0; i < arguments.length; i++) {
             var headersToAdd = arguments[i];
 
             if (!headersToAdd || !Array.isArray(headersToAdd)) {
@@ -326,10 +331,10 @@
                 var addHeader = true;
 
                 for (var k = 0; k < headers.length; k++) {
-                  if (headers[k].key === header.key) {
-                      addHeader = false;
-                      break;
-                  }
+                    if (headers[k].key === header.key) {
+                        addHeader = false;
+                        break;
+                    }
                 }
 
                 if (addHeader) {
@@ -353,26 +358,29 @@
             return new WebApiClient.BatchResponse({
                 xhr: xhr
             });
-        }
-        else {
+        } else {
             return JSON.parse(xhr.responseText);
         }
     }
 
-    function IsOverlengthGet (method, url) {
+    function IsOverlengthGet(method, url) {
         return method && method.toLowerCase() === "get" && url && url.length > 2048;
     }
 
     function SendAsync(method, url, payload, parameters) {
         var xhr = new XMLHttpRequest();
 
+        if (WebApiClient.WithCredentials) {
+            xhr.withCredentials = WebApiClient.WithCredentials;
+        }
+
         var promise = new Promise(function(resolve, reject) {
             xhr.onload = function() {
-                if(xhr.readyState !== 4) {
+                if (xhr.readyState !== 4) {
                     return;
                 }
 
-                if(xhr.status === 200){
+                if (xhr.status === 200) {
                     var response = ParseResponse(xhr);
 
                     if (response instanceof WebApiClient.BatchResponse) {
@@ -388,7 +396,7 @@
 
                     var nextLink = GetNextLink(response);
                     var pagingCookie = GetPagingCookie(response);
-                    
+
                     // Since 9.X paging cookie is always added to response, even in queryParams retrieves
                     // In 9.X the morerecords flag can signal whether there are more records to be found
                     // In 8.X the flag was not present and instead the pagingCookie was only set if more records were available
@@ -401,8 +409,7 @@
                         SetPreviousResponse(parameters, response);
 
                         resolve(SendAsync("GET", nextLink, null, parameters));
-                    }
-                    else if (parameters.fetchXml && moreRecords && pagingCookie && (WebApiClient.ReturnAllPages || parameters.returnAllPages)) {
+                    } else if (parameters.fetchXml && moreRecords && pagingCookie && (WebApiClient.ReturnAllPages || parameters.returnAllPages)) {
                         var nextPageFetch = SetCookie(pagingCookie, parameters);
 
                         SetPreviousResponse(parameters, response);
@@ -410,15 +417,12 @@
                         parameters.fetchXml = nextPageFetch;
 
                         resolve(WebApiClient.Retrieve(parameters));
-                    }
-                    else {
+                    } else {
                         resolve(response);
                     }
-                }
-                else if (xhr.status === 201) {
+                } else if (xhr.status === 201) {
                     resolve(ParseResponse(xhr));
-                }
-                else if (xhr.status === 204) {
+                } else if (xhr.status === 204) {
                     if (method.toLowerCase() === "post") {
                         resolve(xhr.getResponseHeader("OData-EntityId"));
                     }
@@ -426,8 +430,7 @@
                     else {
                         resolve(xhr.statusText);
                     }
-                }
-                else {
+                } else {
                     reject(new Error(FormatError(xhr)));
                 }
             };
@@ -464,9 +467,8 @@
             // For batch requests, we just want to send a string body
             if (typeof(payload) === "string") {
                 xhr.send(payload);
-            }
-            else {
-              xhr.send(JSON.stringify(payload));
+            } else {
+                xhr.send(JSON.stringify(payload));
             }
         } else {
             xhr.send();
@@ -477,6 +479,11 @@
 
     function SendSync(method, url, payload, parameters) {
         var xhr = new XMLHttpRequest();
+
+        if (WebApiClient.WithCredentials) {
+            xhr.withCredentials = WebApiClient.WithCredentials;
+        }
+
         var response;
         var headers = [];
 
@@ -506,25 +513,24 @@
             // For batch requests, we just want to send a string body
             if (typeof(payload) === "string") {
                 xhr.send(payload);
-            }
-            else {
-              xhr.send(JSON.stringify(payload));
+            } else {
+                xhr.send(JSON.stringify(payload));
             }
         } else {
             xhr.send();
         }
 
-        if(xhr.readyState !== 4) {
+        if (xhr.readyState !== 4) {
             return;
         }
 
-        if(xhr.status === 200){
+        if (xhr.status === 200) {
             response = ParseResponse(xhr);
 
             // If we received multiple responses, it was a custom batch. Just resolve all matches
             if (response instanceof WebApiClient.BatchResponse) {
-              // If it was an overlength fetchXml, that was sent as batch automatically, we don't want it to behave as a batch
-              if (parameters.isOverLengthGet) {
+                // If it was an overlength fetchXml, that was sent as batch automatically, we don't want it to behave as a batch
+                if (parameters.isOverLengthGet) {
                     response = response.batchResponses[0].payload;
                 } else {
                     return response;
@@ -533,7 +539,7 @@
 
             var nextLink = GetNextLink(response);
             var pagingCookie = GetPagingCookie(response);
-            
+
             // Since 9.X paging cookie is always added to response, even in queryParams retrieves
             // In 9.X the morerecords flag can signal whether there are more records to be found
             // In 8.X the flag was not present and instead the pagingCookie was only set if more records were available
@@ -546,8 +552,7 @@
                 SetPreviousResponse(parameters, response);
 
                 SendSync("GET", nextLink, null, parameters);
-            }
-            else if (parameters.fetchXml && moreRecords && pagingCookie && (WebApiClient.ReturnAllPages || parameters.returnAllPages)) {
+            } else if (parameters.fetchXml && moreRecords && pagingCookie && (WebApiClient.ReturnAllPages || parameters.returnAllPages)) {
                 var nextPageFetch = SetCookie(pagingCookie, parameters);
 
                 SetPreviousResponse(parameters, response);
@@ -556,11 +561,9 @@
 
                 WebApiClient.Retrieve(parameters);
             }
-        }
-        else if (xhr.status === 201) {
+        } else if (xhr.status === 201) {
             response = ParseResponse(xhr);
-        }
-        else if (xhr.status === 204) {
+        } else if (xhr.status === 204) {
             if (method.toLowerCase() === "post") {
                 response = xhr.getResponseHeader("OData-EntityId");
             }
@@ -568,23 +571,22 @@
             else {
                 response = xhr.statusText;
             }
-        }
-        else {
+        } else {
             throw new Error(FormatError(xhr));
         }
 
         return response;
     }
 
-    function GetAsync (parameters) {
-      if (typeof(parameters.async) !== "undefined") {
-          return parameters.async;
-      }
+    function GetAsync(parameters) {
+        if (typeof(parameters.async) !== "undefined") {
+            return parameters.async;
+        }
 
-      return WebApiClient.Async;
+        return WebApiClient.Async;
     }
 
-    function BuildAlternateKeyUrl (params) {
+    function BuildAlternateKeyUrl(params) {
         if (!params || !params.alternateKey) {
             return "";
         }
@@ -603,8 +605,7 @@
 
             if (i + 1 === params.alternateKey.length) {
                 url += ")";
-            }
-            else {
+            } else {
                 url += ",";
             }
         }
@@ -624,37 +625,37 @@
      * @memberof module:WebApiClient
      * @return {Promise<Object>|Object}
      */
-    WebApiClient.SendRequest = function (method, url, payload, parameters) {
-      var params = parameters || {};
+    WebApiClient.SendRequest = function(method, url, payload, parameters) {
+        var params = parameters || {};
 
-      // Fallback for request headers array as fourth parameter
-      if (Array.isArray(params)) {
-          params = {
-              headers: params
-          };
-      }
+        // Fallback for request headers array as fourth parameter
+        if (Array.isArray(params)) {
+            params = {
+                headers: params
+            };
+        }
 
-      if (WebApiClient.Token) {
-          params.headers = params.headers || [];
-          params.headers.push({key: "Authorization", value: "Bearer " + WebApiClient.Token});
-      }
+        if (WebApiClient.Token) {
+            params.headers = params.headers || [];
+            params.headers.push({ key: "Authorization", value: "Bearer " + WebApiClient.Token });
+        }
 
-      if (params.asBatch) {
-          return new WebApiClient.BatchRequest({
-              method: method,
-              url: url,
-              payload: payload,
-              headers: params.headers
-          });
-      }
+        if (params.asBatch) {
+            return new WebApiClient.BatchRequest({
+                method: method,
+                url: url,
+                payload: payload,
+                headers: params.headers
+            });
+        }
 
-      var asynchronous = GetAsync(params);
+        var asynchronous = GetAsync(params);
 
-      if (asynchronous) {
-          return SendAsync(method, url, payload, params);
-      } else {
-          return SendSync(method, url, payload, params);
-      }
+        if (asynchronous) {
+            return SendAsync(method, url, payload, params);
+        } else {
+            return SendSync(method, url, payload, params);
+        }
     };
 
     /**
@@ -664,7 +665,7 @@
      * @memberof module:WebApiClient
      * @return {void}
      */
-    WebApiClient.Configure = function (configuration) {
+    WebApiClient.Configure = function(configuration) {
         for (var property in configuration) {
             if (!configuration.hasOwnProperty(property)) {
                 continue;
@@ -734,11 +735,9 @@
 
         if (params.entityId) {
             url += "(" + RemoveIdBrackets(params.entityId) + ")";
-        }
-        else if (params.fetchXml) {
-        	  url += "?fetchXml=" + escape(params.fetchXml);
-        }
-        else if (params.alternateKey) {
+        } else if (params.fetchXml) {
+            url += "?fetchXml=" + escape(params.fetchXml);
+        } else if (params.alternateKey) {
             url += BuildAlternateKeyUrl(params);
         }
 
@@ -920,7 +919,7 @@
         var url = WebApiClient.GetApiUrl() + "$batch";
 
         batch.headers = batch.headers || [];
-        batch.headers.push({key: "Content-Type", value: "multipart/mixed;boundary=" + batch.name});
+        batch.headers.push({ key: "Content-Type", value: "multipart/mixed;boundary=" + batch.name });
 
         var payload = batch.buildPayload();
 
@@ -937,10 +936,10 @@
      * @memberof module:WebApiClient
      * @return {Promise<Object>|Object} - Returns Promise<Object> if async, just Object if sent synchronously.
      */
-    WebApiClient.Expand = function (parameters) {
-    /// <summary>Expands all odata.nextLink / deferred properties for an array of records</summary>
-    /// <param name="parameters" type="Object">Object that contains 'records' array or object. Optional 'headers'.</param>
-    /// <returns>Promise for sent request or result if sync.</returns>
+    WebApiClient.Expand = function(parameters) {
+        /// <summary>Expands all odata.nextLink / deferred properties for an array of records</summary>
+        /// <param name="parameters" type="Object">Object that contains 'records' array or object. Optional 'headers'.</param>
+        /// <returns>Promise for sent request or result if sync.</returns>
         var params = parameters || {};
         var records = params.records;
 
@@ -981,4 +980,4 @@
     };
 
     module.exports = WebApiClient;
-} ());
+}());
