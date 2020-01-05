@@ -7,6 +7,7 @@ declare module WebApiClient {
     let Async: boolean;
     let ClientUrl: string;
     let Token: string;
+    let WithCredentials: boolean;
     
     export let Promise: typeof bluebird;
 
