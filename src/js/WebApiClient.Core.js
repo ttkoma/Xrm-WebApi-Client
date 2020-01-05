@@ -246,7 +246,17 @@
 
     function FormatError(xhr) {
         if (xhr && xhr.response) {
-            var json = JSON.parse(xhr.response);
+            var json = null;
+
+            try {
+                json = JSON.parse(xhr.response);
+            } catch (e) {
+                // not json document, maybe html response from on-premise IIS
+                json = {
+                    xhrResponseText: xhr.responseText,
+                    xhrStatusCode: xhr.status
+                };
+            }
 
             if (!WebApiClient.PrettifyErrors) {
                 json.xhrStatusText = xhr.statusText;
@@ -259,7 +269,7 @@
                     error = json.error.message;
                 }
 
-                return xhr.statusText + ": " + error;
+                return xhr.statusText + (error ? ": " + error : "");
             }
         }
 
